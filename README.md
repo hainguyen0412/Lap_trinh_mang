@@ -48,6 +48,8 @@ Lap_trinh_mang/
 
 - Đợt 8: Ghi CSV bằng hàng đợi có giới hạn.
 
+- Đợt 9: Chuyển tiếp telemetry UDP tới nhiều client TCP.
+
 Các thư mục còn lại được giữ bằng `.gitkeep` để triển khai ở các đợt tiếp theo.
 
 ## Kiểm tra bộ mẫu
@@ -95,3 +97,5 @@ Kiểm tra đợt 5: `powershell -NoProfile -ExecutionPolicy Bypass -File script
 Kiểm tra đợt 7: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test_decoder_inspector.ps1`.
 
 Kiểm tra đợt 8: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test_logging.ps1`.
+
+Build gateway: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build_gateway.ps1`. Kiểm tra chuyển tiếp: `python -B tests/integration/telemetry_fanout_test.py`. Mốc này chỉ chuyển telemetry; uplink được đóng để chờ kiểm tra vai trò ở đợt 10.
