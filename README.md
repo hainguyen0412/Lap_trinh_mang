@@ -38,6 +38,8 @@ Lap_trinh_mang/
 
 - Đợt 3: đọc và kiểm tra cấu hình JSON chung; bổ sung thư viện JSON và kiểm thử cấu hình.
 
+- Đợt 4: Winsock, hàng đợi giới hạn, quản lý socket RAII và xử lý gửi thiếu byte.
+
 Các thư mục còn lại được giữ bằng `.gitkeep` để triển khai ở các đợt tiếp theo.
 
 ## Kiểm tra bộ mẫu
@@ -65,3 +67,15 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test_config.ps1
 Bộ đọc cấu hình từ chối khóa lạ, sai kiểu, cổng/ID/giới hạn không hợp lệ và chế độ ngoài B0/B1/B2. Mẫu nằm trong `config/gateway.example.json`; cấu hình riêng của máy có thể dùng đuôi `.local.json`.
 
 Thư viện nlohmann/json 3.11.3 được lưu tại `third_party/nlohmann/json.hpp`, kèm giấy phép MIT trong `third_party/nlohmann/LICENSE`. Nguồn: https://github.com/nlohmann/json/tree/v3.11.3.
+
+## Kiểm tra thành phần mạng cơ sở (đợt 4)
+
+Chạy trên Windows với g++ MinGW-w64:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test_network.ps1
+```
+
+Kiểm tra hàng đợi theo số phần tử/dung lượng, FIFO và đánh thức khi đóng; gửi thiếu byte, would-block, interrupt, hủy, lỗi socket và kết quả bất hợp lệ. Các ca socket thật dùng cổng localhost tạm để kiểm tra bind UDP/TCP, độc quyền cổng và quyền sở hữu socket.
+
+Đợt này cung cấp các thành phần mạng cơ sở. Vòng xử lý gateway và chuyển tiếp nhiều client sẽ được triển khai ở các đợt sau.
