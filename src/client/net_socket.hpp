@@ -46,7 +46,8 @@ public:
     void shutdown_both();
     // Gui du len bytes (lap lai neu send chi gui duoc 1 phan). false = loi/dong.
     bool send_all(const std::uint8_t* data, std::size_t len,
-                  std::atomic<std::uint64_t>* accepted_bytes = nullptr);
+                  std::atomic<std::uint64_t>* accepted_bytes = nullptr,
+                  const std::atomic<bool>* cancelled = nullptr);
     std::string peer_name() const;
     bool readable(int timeout_ms) const;
     // >0: so byte nhan; 0: ben kia dong; <0: loi.

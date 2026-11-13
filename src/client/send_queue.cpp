@@ -83,11 +83,11 @@ bool SendQueue::send_frame(const mavlink_gateway::Bytes& data) {
             if (stop_) return false;
         }
         const auto amount = chunk_bytes_ ? std::min(chunk_bytes_, data.size() - offset) : data.size() - offset;
-        if (!sock_.send_all(data.data() + offset, amount, &socket_bytes_)) return false;
+        if (!sock_.send_all(data.data() + offset, amount, &socket_bytes_, &stop_)) return false;
         offset += amount;
         if (offset < data.size() && chunk_delay_ms_) {
             std::unique_lock<std::mutex> lock(mutex_);
-            if (wake_.wait_for(lock, std::chrono::milliseconds(chunk_delay_ms_), [this] { return stop_; }))
+            if (wake_.wait_for(lock, std::chrono::milliseconds(chunk_delay_ms_), [this] { return stop_.load(); }))
                 return false;
         }
     }

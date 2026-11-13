@@ -123,6 +123,39 @@ void stop_chunk_delay() {
     check(Clock::now() - started < std::chrono::seconds(1), "Chunk delay was not interrupted");
 }
 
+#ifdef _WIN32
+void cancel_write_without_shutdown() {
+    Pair pair;
+    const int no_send_buffer = 0, small_receive_buffer = 1024;
+    check(setsockopt(pair.client.handle(), SOL_SOCKET, SO_SNDBUF,
+          reinterpret_cast<const char*>(&no_send_buffer), sizeof no_send_buffer) == 0,
+          "Cannot disable send buffering for cancellation probe");
+    check(setsockopt(pair.peer.handle(), SOL_SOCKET, SO_RCVBUF,
+          reinterpret_cast<const char*>(&small_receive_buffer), sizeof small_receive_buffer) == 0,
+          "Cannot limit receive buffering for cancellation probe");
+    Bytes data(8 * 1024 * 1024, 'X');
+    std::atomic<bool> cancelled{false}, finished{false};
+    bool success = true;
+    std::thread writer([&] {
+        success = pair.client.send_all(data.data(), data.size(), nullptr, &cancelled);
+        finished = true;
+    });
+    receive(pair.peer, 1);
+    const bool pending = !finished.load();
+    const auto started = Clock::now();
+    cancelled = true;
+    // No shutdown here: the cancellation token must wake the pending WSASend.
+    const auto deadline = started + std::chrono::seconds(1);
+    while (!finished && Clock::now() < deadline)
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    const bool stopped = finished.load();
+    if (!stopped) pair.client.shutdown_both(); // Cleanup only; the assertion still fails.
+    writer.join();
+    check(pending, "Cancellation probe completed before cancellation");
+    check(stopped && !success, "Pending write ignored cancellation without shutdown");
+}
+#endif
+
 void send_failure() {
     cnet::Socket invalid;
     cclient::SendQueue sender(invalid);
@@ -194,6 +227,9 @@ int main() {
         {"priority_between_frames", priority_between_frames},
         {"stop_blocked_send", stop_blocked_send},
         {"stop_chunk_delay", stop_chunk_delay},
+#ifdef _WIN32
+        {"cancel_write_without_shutdown", cancel_write_without_shutdown},
+#endif
         {"send_failure", send_failure},
         {"stop_idle", stop_idle},
         {"drain_completes_and_closes_admission", drain_completes_and_closes_admission},
@@ -208,6 +244,7 @@ int main() {
     { std::lock_guard<std::mutex> lock(mutex); finished = true; }
     wake.notify_all();
     watchdog.join();
-    std::printf("%u/7 transport tests passed.\n", passed);
-    return passed == 7 ? 0 : 1;
+    const auto total = static_cast<unsigned>(sizeof cases / sizeof cases[0]);
+    std::printf("%u/%u transport tests passed.\n", passed, total);
+    return passed == total ? 0 : 1;
 }

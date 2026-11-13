@@ -25,6 +25,7 @@ C sở hữu console client kết nối đến gateway, Command Manager, bộ re
 4. Một hàng đợi gửi với một writer tránh trộn byte heartbeat/lệnh/ACK. Frame ưu tiên không cắt ngang frame đang gửi. Fake gateway dùng timer riêng để không chặn nhận trong thời gian đợi ACK và gửi fixture theo ranh giới từng khung.
 5. Có log cấu hình hiệu lực, định kỳ metrics khi socket nhàn rỗi, cửa sổ warmup/đo đúng, thống kê uplink tách downlink, CPU/RSS đo thật và latency có giới hạn bộ nhớ. Thời gian monotonic thuộc từng tiến trình; không dùng để đo xuyên máy.
 6. Ctrl+C/quit được phát hiện ngay cả khi peer chưa đóng chiều gửi. Trước khi chốt log, dừng sampler/ticker, drain có hạn, hủy phần còn lại và join send worker. Lỗi ghi log được báo ra stderr và exit code lỗi.
+7. Trên Windows, worker gửi dùng overlapped WSASend với token hủy. Khi dừng, thao tác đang chờ được hủy bằng CancelIoEx và được thu hồi hoàn tất trước khi giải phóng buffer. Không phụ thuộc riêng vào shutdown để đánh thức một send đang bị chặn; giữ nguyên giới hạn dừng một giây trong bài hồi quy. Bài cancel_write_without_shutdown kiểm tra việc hủy khi socket vẫn mở.
 
 `commands.csv` dùng `queued` để nói lệnh đã được đưa vào hàng đợi. ACK timeout hiện bắt đầu tại thời điểm enqueue; khi hàng đợi quá chậm có thể hết thời gian trước lúc peer nhận được. B2 có sự kiện hoàn tất socket với timestamp riêng để đối chiếu. Chưa có kết quả PX4 thì không suy ra việc bay từ một ACK trong giả lập.
 

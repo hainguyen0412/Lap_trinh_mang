@@ -1,6 +1,9 @@
 #include "net_socket.hpp"
+#include <algorithm>
 #include <cstring>
+#include <limits>
 #ifdef _WIN32
+#include <windows.h>
 using SockLen = int;
 #else
 #include <arpa/inet.h>
@@ -75,15 +78,56 @@ void Socket::shutdown_both() {
 }
 
 bool Socket::send_all(const std::uint8_t* data, std::size_t len,
-                      std::atomic<std::uint64_t>* accepted_bytes) {
+                      std::atomic<std::uint64_t>* accepted_bytes,
+                      const std::atomic<bool>* cancelled) {
     int flags = 0;
 #ifdef MSG_NOSIGNAL
     flags = MSG_NOSIGNAL;
 #endif
     std::size_t off = 0;
     while (off < len) {
-        const auto n = ::send(h_, reinterpret_cast<const char*>(data) + off,
-                              static_cast<int>(len - off), flags);
+        if (cancelled && cancelled->load()) return false;
+        const auto amount = static_cast<int>(std::min(len - off,
+            static_cast<std::size_t>((std::numeric_limits<int>::max)())));
+        int n;
+#ifdef _WIN32
+        if (cancelled) {
+            // shutdown alone may leave a blocking Windows send waiting for TCP.
+            // Give this write its own cancellable request; never close a socket
+            // concurrently with send/recv or release buffers before completion.
+            WSAOVERLAPPED operation{};
+            operation.hEvent = WSACreateEvent();
+            if (operation.hEvent == WSA_INVALID_EVENT) return false;
+            WSABUF buffer{static_cast<ULONG>(amount),
+                reinterpret_cast<char*>(const_cast<std::uint8_t*>(data + off))};
+            const int result = WSASend(h_, &buffer, 1, nullptr, 0, &operation, nullptr);
+            if (result == SOCKET_ERROR && WSAGetLastError() != WSA_IO_PENDING) {
+                WSACloseEvent(operation.hEvent);
+                return false;
+            }
+            if (result == SOCKET_ERROR) {
+                for (;;) {
+                    const auto wait = WSAWaitForMultipleEvents(1, &operation.hEvent, FALSE, 20, FALSE);
+                    if (cancelled->load() || wait == WSA_WAIT_FAILED) {
+                        CancelIoEx(reinterpret_cast<HANDLE>(h_), &operation);
+                        break;
+                    }
+                    if (wait != WSA_WAIT_TIMEOUT) break;
+                }
+            }
+            DWORD transferred = 0, completed_flags = 0;
+            // Even a cancellation request must complete before operation/buffer
+            // storage can be reused. The result may still be a successful send.
+            const bool complete = WSAGetOverlappedResult(h_, &operation, &transferred,
+                                                        TRUE, &completed_flags) != FALSE;
+            WSACloseEvent(operation.hEvent);
+            if (!complete) return false;
+            n = static_cast<int>(transferred);
+        } else
+#endif
+        {
+            n = ::send(h_, reinterpret_cast<const char*>(data) + off, amount, flags);
+        }
         if (n <= 0) return false;
         if (accepted_bytes) *accepted_bytes += static_cast<std::uint64_t>(n);
         off += static_cast<std::size_t>(n);

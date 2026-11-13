@@ -15,3 +15,5 @@ ctest --preset windows-release
 Chi tiết chạy được sinh trong build/windows-release/Testing và output/test_results, không đưa log hoặc executable vào Git. CI trên GitHub chạy lại độc lập; kết quả local này không thay thế trạng thái CI.
 
 **Chưa kiểm thử PX4 SITL thực tế, QGroundControl hoặc bay.** Nguồn UDP trong kiểm thử localhost chỉ mô phỏng giao thức. Nhóm C tiếp tục theo [kế hoạch PX4](../px4-testing.md) và [mẫu báo cáo](../px4-results-template.md). Chưa thực hiện benchmark 70 giây theo tải thực.
+
+Sau bản sửa hủy gửi, 17 bài qua trong lượt đầy đủ; nhóm fake_gateway_integration được chạy lại và qua sau khi cập nhật runner từ số cố định 7/7 sang số tình huống thực tế. Bộ transport có 8/8 tình huống trên Windows. Xem [phân tích lỗi CI](ci-send-cancellation.md).
