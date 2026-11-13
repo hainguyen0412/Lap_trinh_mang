@@ -59,7 +59,8 @@ private:
     std::condition_variable wake_, drained_;
     std::deque<Item> queue_, priority_queue_;
     std::size_t queued_bytes_ = 0, peak_queued_frames_ = 0;
-    bool stop_ = false, accepting_ = true, in_flight_ = false;
+    std::atomic<bool> stop_{false};
+    bool accepting_ = true, in_flight_ = false;
     std::atomic<bool> failed_{false};
     std::atomic<std::uint64_t> sent_{0}, dropped_{0};
     std::atomic<std::uint64_t> socket_bytes_{0}, queue_full_{0};

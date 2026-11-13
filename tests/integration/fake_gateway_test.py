@@ -5,6 +5,7 @@ import csv
 import hashlib
 import json
 from pathlib import Path
+import re
 import socket
 import struct
 import subprocess
@@ -180,9 +181,11 @@ def loop_frames(binary, output):
 def queue_tests(binary, output):
     completed = subprocess.run([str(binary)], cwd=ROOT, capture_output=True, timeout=12)
     (output / 'send_queue_tests.log').write_bytes(completed.stdout + completed.stderr)
-    if completed.returncode != 0 or b'7/7 transport tests passed' not in completed.stdout:
+    summary = re.search(rb'(\d+)/(\d+) transport tests passed\.', completed.stdout)
+    if (completed.returncode != 0 or summary is None or int(summary[2]) == 0 or
+            summary[1] != summary[2]):
         raise AssertionError(f'SendQueue tests failed (exit {completed.returncode})')
-    return {'checks': '7/7'}
+    return {'checks': summary[1].decode() + '/' + summary[2].decode()}
 
 
 def client_ack(binary, client, output, mode, ack_mode):
