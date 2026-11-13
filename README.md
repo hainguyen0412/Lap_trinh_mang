@@ -44,6 +44,8 @@ Lap_trinh_mang/
 
 - Đợt 6: Bổ sung công cụ MAVLink và máy chủ giả lập.
 
+- Đợt 7: Giải mã telemetry và theo dõi SEQ theo nguồn.
+
 Các thư mục còn lại được giữ bằng `.gitkeep` để triển khai ở các đợt tiếp theo.
 
 ## Kiểm tra bộ mẫu
@@ -87,3 +89,5 @@ Kiểm tra hàng đợi theo số phần tử/dung lượng, FIFO và đánh th�
 Kiểm tra đợt 5: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test_parser.ps1`.
 
 Đợt 6: các công cụ `tools/fake_gateway.cpp`, `tools/replay_udp.cpp` và đóng gói MAVLink sử dụng parser đã có ở đợt 5. Kiểm tra hàng đợi bằng `scripts/test_send_queue.ps1`; kiểm tra server bằng `tests/integration/fake_gateway_test.py` sau khi build công cụ vào build/bin.
+
+Kiểm tra đợt 7: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test_decoder_inspector.ps1`.

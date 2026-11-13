@@ -111,6 +111,92 @@ ParseBatch Parser::consume(const ReceiveEvent& event) {
 
 void Parser::reset(SourceId source_id) { tcp_.erase(source_id); }
 
+std::optional<DecodedMessage> Decoder::decode(const FrameRecord& frame) const {
+    const auto& raw=frame.raw;
+    if (raw.size()<12 || raw[0]!=0xfd || raw[2]!=0 || raw.size()!=12U+raw[1] ||
+        frame.header.msgid!=message_id(raw,0) || frame.header.payload_len!=raw[1])
+        throw std::invalid_argument("Decoder requires a complete accepted unsigned MAVLink 2 frame");
+    mavlink_message_t message{}; // Zero-fill trailing payload bytes before generated decoding.
+    message.magic=0xfd; message.msgid=frame.header.msgid; message.len=raw[1];
+    message.sysid=frame.header.sysid; message.compid=frame.header.compid;
+    std::memcpy(_MAV_PAYLOAD_NON_CONST(&message),raw.data()+10,message.len);
+    switch (message.msgid) {
+    case MAVLINK_MSG_ID_HEARTBEAT: {
+        mavlink_heartbeat_t value{}; mavlink_msg_heartbeat_decode(&message,&value);
+        return Heartbeat{value.custom_mode,value.type,value.autopilot,value.base_mode,value.system_status};
+    }
+    case MAVLINK_MSG_ID_SYS_STATUS: {
+        mavlink_sys_status_t value{}; mavlink_msg_sys_status_decode(&message,&value);
+        SysStatus result;
+        if (value.voltage_battery!=std::numeric_limits<std::uint16_t>::max())
+            result.battery_voltage_v=value.voltage_battery/1000.0;
+        if (value.battery_remaining!=-1) result.battery_remaining_percent=value.battery_remaining;
+        return result;
+    }
+    case MAVLINK_MSG_ID_ATTITUDE: {
+        mavlink_attitude_t value{}; mavlink_msg_attitude_decode(&message,&value);
+        return Attitude{value.roll,value.pitch,value.yaw};
+    }
+    case MAVLINK_MSG_ID_GLOBAL_POSITION_INT: {
+        mavlink_global_position_int_t value{}; mavlink_msg_global_position_int_decode(&message,&value);
+        return GlobalPosition{value.lat/1e7,value.lon/1e7,value.alt/1000.0,value.relative_alt/1000.0};
+    }
+    case MAVLINK_MSG_ID_COMMAND_ACK: {
+        mavlink_command_ack_t value{}; mavlink_msg_command_ack_decode(&message,&value);
+        return CommandAck{value.command,value.result,value.progress,value.result_param2,
+                          value.target_system,value.target_component};
+    }
+    default: return std::nullopt;
+    }
+}
+
+void Inspector::on_frame(const FrameRecord& frame,const std::optional<DecodedMessage>& decoded) {
+    std::lock_guard<std::mutex> guard(mutex_);
+    ++totals_.valid_frames;
+    ++totals_.valid_frames_by_msgid[frame.header.msgid];
+    const Key key{frame.source.source_id,frame.header.sysid,frame.header.compid};
+    auto& state=sources_[key];
+    auto& stats=state.stats;
+    stats.source_id=frame.source.source_id; stats.sysid=frame.header.sysid; stats.compid=frame.header.compid;
+    ++stats.received_valid;
+    if (!state.seq) state.seq=frame.header.seq;
+    else {
+        const auto d=(int(frame.header.seq)-int(*state.seq)+256)%256;
+        if (d==0) ++stats.repeated_seq;
+        else if (d<128) { stats.estimated_missing+=static_cast<std::uint64_t>(d-1); state.seq=frame.header.seq; }
+        else ++stats.ambiguous_seq; // Keep reference: an old packet must not move it backwards.
+    }
+    if (frame.header.msgid==MAVLINK_MSG_ID_HEARTBEAT) stats.last_heartbeat_ns=frame.received_at_ns;
+    if (decoded) stats.latest_messages.insert_or_assign(frame.header.msgid,*decoded);
+}
+
+void Inspector::on_issue(const ParseIssue& issue_value) {
+    std::lock_guard<std::mutex> guard(mutex_);
+    switch (issue_value.code) {
+    case ParseIssueCode::BadCrc: ++totals_.bad_crc_candidates; break;
+    case ParseIssueCode::UnsupportedMessage:
+    case ParseIssueCode::UnsupportedSigning:
+    case ParseIssueCode::UnsupportedIncompatFlags: ++totals_.unsupported_candidates; break;
+    case ParseIssueCode::TruncatedDatagram: ++totals_.truncated_datagrams; break;
+    case ParseIssueCode::NoiseDiscarded: totals_.discarded_noise_bytes+=issue_value.discarded_bytes; break;
+    case ParseIssueCode::TcpBufferLimit: ++totals_.tcp_buffer_overflows; break;
+    }
+}
+
+InspectorSnapshot Inspector::snapshot() const {
+    std::lock_guard<std::mutex> guard(mutex_);
+    auto copy=totals_;
+    for (const auto& item:sources_) copy.sources.push_back(item.second.stats);
+    return copy;
+}
+
+void Inspector::forget_source(SourceId source_id) {
+    std::lock_guard<std::mutex> guard(mutex_);
+    for (auto it=sources_.begin();it!=sources_.end();) {
+        if (std::get<0>(it->first)==source_id) it=sources_.erase(it); else ++it;
+    }
+}
+
 const char* issue_name(ParseIssueCode code) noexcept {
     switch (code) {
     case ParseIssueCode::BadCrc: return "bad_crc";
