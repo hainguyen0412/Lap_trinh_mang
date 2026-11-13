@@ -1,0 +1,86 @@
+{
+  "verified_at": "2026-11-13T19:20:23.350390+07:00",
+  "platform": "Windows x64 / MSYS2 UCRT64",
+  "compiler": "GCC 16.1.0",
+  "cmake": "3.31.10",
+  "python": "3.14.2",
+  "passed": 18,
+  "failed": 0,
+  "source_sha256": "41f3dc45770329585aab957537c24f709408d9a6a9d33131a15aa034a29b3726",
+  "contracts_sha256": "c58fed5058181115e15dfe3066c166959ecd836d74d951f69905b338fea821f1",
+  "px4_sitl_tested": false,
+  "tests": [
+    {
+      "name": "fixture_verification",
+      "seconds": 0.186815
+    },
+    {
+      "name": "config_tests",
+      "seconds": 0.628434
+    },
+    {
+      "name": "network_primitives_tests",
+      "seconds": 0.328867
+    },
+    {
+      "name": "b_tests",
+      "seconds": 0.497652
+    },
+    {
+      "name": "a_tests",
+      "seconds": 0.360448
+    },
+    {
+      "name": "c_tests",
+      "seconds": 0.160138
+    },
+    {
+      "name": "metrics_tests",
+      "seconds": 0.135106
+    },
+    {
+      "name": "send_queue_tests",
+      "seconds": 1.16098
+    },
+    {
+      "name": "gateway_integration",
+      "seconds": 15.1313
+    },
+    {
+      "name": "abc_transport_integration",
+      "seconds": 2.01107
+    },
+    {
+      "name": "command_retry_integration",
+      "seconds": 14.0689
+    },
+    {
+      "name": "command_ack_integration",
+      "seconds": 48.6604
+    },
+    {
+      "name": "client_config_integration",
+      "seconds": 6.30694
+    },
+    {
+      "name": "fake_gateway_integration",
+      "seconds": 46.7659
+    },
+    {
+      "name": "client_metrics_integration",
+      "seconds": 14.3282
+    },
+    {
+      "name": "abc_B0",
+      "seconds": 4.79792
+    },
+    {
+      "name": "abc_B1",
+      "seconds": 4.81406
+    },
+    {
+      "name": "abc_B2",
+      "seconds": 4.71859
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+{"cases":[{"seq":[254,255,0,1],"gap":0,"repeat":0,"ambiguous":0,"final_reference":1},{"seq":[11,14],"gap":2,"repeat":0,"ambiguous":0,"final_reference":14},{"seq":[20,20,19,21],"gap":0,"repeat":1,"ambiguous":1,"final_reference":21}]}

@@ -1,0 +1,1 @@
+{"stream":"valid.bin","strategies":["one_byte_per_event","all_bytes_one_event","every_split_of_each_frame","seeded_random_chunks"],"seed":20261111}
