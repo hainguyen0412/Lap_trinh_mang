@@ -54,6 +54,8 @@ Lap_trinh_mang/
 
 - Đợt 11: Hiển thị telemetry trong client console TCP.
 
+- Đợt 12: Theo dõi lệnh ACK retry và timeout trong client.
+
 Các thư mục còn lại được giữ bằng `.gitkeep` để triển khai ở các đợt tiếp theo.
 
 ## Kiểm tra bộ mẫu
@@ -107,3 +109,7 @@ Build gateway: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/buil
 Đợt 10 bật uplink có kiểm tra vai trò, ID, allowlist, đích và heartbeat nguồn; chạy `python -B tests/integration/gateway_test.py` để kiểm tra mạng và cô lập client.
 
 Build client: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build_client.ps1`. Chạy `build/bin/c_client.exe --role observer`; cấu hình hiệu lực và log lưu theo đường dẫn chương trình in.
+
+Build client: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build_client.ps1`. Chạy `build/bin/c_client.exe --role observer`; cấu hình hiệu lực và log lưu theo đường dẫn chương trình in.
+
+Controller: `build/bin/c_client.exe --role controller`. Lệnh: arm, disarm, takeoff [độ cao AMSL], land, quit. Theo dõi ACK đúng nguồn/đích; tổng tối đa 3 lần gửi, IN_PROGRESS dùng hạn chờ riêng. Tham số bay cần kiểm chứng trên PX4 SITL ở đợt tích hợp. Metrics định kỳ và cửa sổ đo client sẽ được bổ sung ở đợt sau.

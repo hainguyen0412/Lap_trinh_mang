@@ -12,7 +12,7 @@ import sys
 import time
 
 sys.dont_write_bytecode = True
-from mavlink_test_utils import ROOT, crc_x25
+from command_retry_test import ROOT, crc_x25
 
 FIXTURE = ROOT / 'tests/fixtures/v1/valid.bin'
 MANIFEST = json.loads((FIXTURE.parent / 'manifest.json').read_text(encoding='utf-8'))
@@ -185,10 +185,60 @@ def queue_tests(binary, output):
     return {'checks': '7/7'}
 
 
+def client_ack(binary, client, output, mode, ack_mode):
+    name = f'client_{mode}_{ack_mode}'
+    fixture = output / 'heartbeat_only.bin'
+    fixture.write_bytes(FIXTURE_FRAMES[0])
+    run_id = f'c_fake_{time.time_ns()}_{mode}_{ack_mode}'
+    with server(binary, fixture, output, name, mode=ack_mode, connect=False) as (gateway, _, port):
+        with (output / f'{name}_client.log').open('wb') as log:
+            process = subprocess.Popen([str(client), '127.0.0.1', str(port), '--role', 'controller',
+                '--mode', mode, '--run-id', run_id], cwd=ROOT, stdin=subprocess.PIPE, stdout=log, stderr=log)
+            try:
+                process.stdin.write(b'arm\n')
+                process.stdin.flush()
+                deadline = time.monotonic() + 4
+                server_log = output / f'{name}_server.log'
+                while 'COMMAND_LONG command=400' not in server_log.read_text(errors='replace'):
+                    if process.poll() is not None or time.monotonic() >= deadline:
+                        raise AssertionError('Server did not receive client command')
+                    time.sleep(0.02)
+                duration = {'accept': 0.4, 'reject': 0.4, 'progress': 1.9, 'none': 3.7, 'late': 4.5}[ack_mode]
+                until = time.monotonic() + duration
+                while time.monotonic() < until:
+                    if process.poll() is not None:
+                        raise AssertionError('Client ended before the transaction completed')
+                    time.sleep(0.02)
+                process.stdin.write(b'quit\n')
+                process.stdin.close()
+                process.wait(timeout=5)
+                gateway.wait(timeout=2)
+                if process.returncode != 0 or gateway.returncode != 0:
+                    raise AssertionError('Client/server exited with an error')
+            finally:
+                if process.stdin and not process.stdin.closed:
+                    process.stdin.close()
+                stop_process(process)
+    command_log = ROOT / f'output/runs/{run_id}/controller/commands.csv'
+    with command_log.open(newline='', encoding='utf-8') as log:
+        events = [row['event'] for row in csv.DictReader(log)]
+    expected = {
+        'accept': ['submitted', 'queued', 'ack_accepted'],
+        'reject': ['submitted', 'queued', 'ack_rejected'],
+        'progress': ['submitted', 'queued', 'ack_in_progress', 'ack_accepted'],
+        'none': ['submitted', 'queued', 'queued', 'queued', 'final_timeout'],
+        'late': ['submitted', 'queued', 'queued', 'queued', 'final_timeout', 'ack_late'],
+    }[ack_mode]
+    if events != expected:
+        raise AssertionError(f'Events {events}, expected {expected}')
+    return {'run_id': run_id, 'events': events, 'client_exit': 0, 'server_exit': 0}
+
+
 def main():
     names = ['frames_chunk_1', 'frames_chunk_7', 'loop_frames', 'late_ack',
              'disconnect_delayed', 'disconnect_mid_frame', 'send_queue']
-
+    names += [f'client_{mode}_{ack}' for mode in ['B0', 'B1', 'B2']
+              for ack in ['accept', 'reject', 'progress', 'none', 'late']]
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--server', type=Path, default=ROOT / 'build/bin/fake_gateway.exe')
     parser.add_argument('--client', type=Path, default=ROOT / 'build/bin/c_client.exe')
@@ -209,6 +259,10 @@ def main():
         'disconnect_mid_frame': lambda: disconnect_mid_frame(binary, output),
         'send_queue': lambda: queue_tests(args.queue_tests.resolve(), output),
     }
+    for mode in ['B0', 'B1', 'B2']:
+        for ack in ['accept', 'reject', 'progress', 'none', 'late']:
+            tests[f'client_{mode}_{ack}'] = lambda mode=mode, ack=ack: client_ack(
+                binary, args.client.resolve(), output, mode, ack)
     results = []
     for name in args.cases:
         result = {'case': name}

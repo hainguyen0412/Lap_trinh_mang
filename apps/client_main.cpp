@@ -42,7 +42,7 @@ std::string describe(const DecodedMessage& m) {
 
 
 int run_client(const cclient::ClientOptions& a){
-if(a.controller) throw std::invalid_argument("Controller is introduced in phase 12; use --role observer");
+
     cnet::WinsockInit winsock;SetConsoleCtrlHandler(control,TRUE);
     std::string error;auto socket=cnet::Socket::tcp_connect(a.host,a.port,&error);
     if(!socket.valid())throw std::runtime_error(error);
@@ -60,6 +60,56 @@ if(a.controller) throw std::invalid_argument("Controller is introduced in phase 
     Parser parser(a.shared.tcp_buffer_bytes);Decoder decoder;Inspector inspector;
     std::atomic<bool> running{true};
 
+    std::unique_ptr<cclient::SendQueue> sender;
+    std::unique_ptr<cclient::CommandManager> manager;
+    std::mutex command_mutex;
+    std::thread ticker;
+    if(a.controller){
+        sender=std::make_unique<cclient::SendQueue>(socket,a.shared.client_queue_frames,a.shared.client_queue_bytes);
+        const cclient::GcsId gcs{a.command.gcs_sysid,a.command.gcs_compid};
+        const auto cfg=a.command;
+        manager=std::make_unique<cclient::CommandManager>(cfg,
+            [gcs,cfg](std::uint16_t id,const cclient::Params& params,std::uint8_t confirmation){return cclient::build_command_long(gcs,cfg.px4_sysid,cfg.px4_compid,id,params,confirmation);},
+            [&](const Bytes& raw){return sender->push(raw);},
+            [&](const cclient::CommandEvent& e){
+                std::map<std::string,std::string> fields{{"request_id",std::to_string(e.request_id)},{"session_id","1"},{"command",std::to_string(e.command)},
+                    {"target_system",std::to_string(e.target_system)},{"target_component",std::to_string(e.target_component)},{"attempt",std::to_string(e.attempt)},
+                    {"event_ns",std::to_string(e.at_ns)},{"event",e.event}};
+                if(e.result)fields["result"]=std::to_string(*e.result);
+                if(e.progress)fields["progress"]=std::to_string(*e.progress);
+                logger.record_fields(LogTable::Commands,fields);
+            });
+        ticker=std::thread([&,gcs]{
+            auto next=Clock::now();const auto period=std::chrono::milliseconds(a.heartbeat_interval_ms);
+            const auto tick=std::chrono::milliseconds(std::min<unsigned>(50,a.heartbeat_interval_ms));
+            while(running){
+                {std::lock_guard<std::mutex> lock(command_mutex);manager->tick(now_ns());}
+                if(Clock::now()>=next){sender->push(cclient::build_gcs_heartbeat(gcs));next=Clock::now()+period;}
+                std::this_thread::sleep_until(std::min(next,Clock::now()+tick));
+            }
+        });
+        std::thread([&]{
+            std::puts("Lenh: arm | disarm | takeoff [do_cao_amsl_m] | land | help | quit");
+            std::string line;
+            while(running&&std::getline(std::cin,line)){
+                std::istringstream input(line);std::string word;input>>word;
+                if(word=="quit"||word=="exit"){running=false;socket.shutdown_both();break;}
+                cclient::Params params{};std::uint16_t id=0;
+                if(word=="arm"){id=cclient::kCmdArm;params[0]=1;}
+                else if(word=="disarm")id=cclient::kCmdArm;
+                else if(word=="takeoff"){id=cclient::kCmdTakeoff;input>>params[6];}
+                else if(word=="land")id=cclient::kCmdLand;
+                else continue;
+                if(std::find(a.shared.allowed_commands.begin(),a.shared.allowed_commands.end(),id)==a.shared.allowed_commands.end()){
+                    std::printf("Command %u is disabled by config\n",id);event("command_not_allowed",std::to_string(id));continue;
+                }
+                std::lock_guard<std::mutex> lock(command_mutex);
+                if(!running)break;
+                manager->submit(id,params,now_ns());
+            }
+        }).detach();
+    }
+
     std::uint8_t bytes[4096];FrameId next_id=1;
     while(running&&!InterlockedCompareExchange(&console_stop,0,0)){
         if(!socket.readable(100))continue;
@@ -71,15 +121,24 @@ if(a.controller) throw std::invalid_argument("Controller is introduced in phase 
             std::optional<DecodedMessage> decoded;
             if(a.mode!=MeasurementMode::B0||frame.header.msgid==77)decoded=decoder.decode(frame);
             if(a.mode!=MeasurementMode::B0)inspector.on_frame(frame,decoded);
-
+if(manager&&decoded){if(const auto* value=std::get_if<CommandAck>(&*decoded)){std::lock_guard<std::mutex> lock(command_mutex);manager->on_ack(*value,frame.header.sysid,frame.header.compid,frame.received_at_ns);}}
             if(decoded)std::printf("%s\n",describe(*decoded).c_str());
         }
         if(batch.close_tcp_session)break;
     }
     running=false;
-
+if(manager){std::lock_guard<std::mutex> lock(command_mutex);manager->on_disconnect(now_ns());}
+    if(ticker.joinable())ticker.join();
+    if(sender){sender->drain_until(Clock::now()+std::chrono::milliseconds(a.shared.drain_ms));sender->close();}
     socket.shutdown_both();socket.close();event("connection_closed");logger.close();
     const int result=logger.stats().last_error.empty()?0:1;
+    if(a.mode!=MeasurementMode::B0){
+        const auto stats=inspector.snapshot();
+        std::printf("== Thong ke: %llu khung hop le | bad_crc=%llu | unsupported=%llu\n",
+            static_cast<unsigned long long>(stats.valid_frames),
+            static_cast<unsigned long long>(stats.bad_crc_candidates),
+            static_cast<unsigned long long>(stats.unsupported_candidates));
+    }
     std::fflush(stdout);
     if(a.controller)std::_Exit(result);
     return result;
