@@ -1,0 +1,1 @@
+{"cases":[{"file":"bad_crc.bin","issue":"bad_crc"},{"file":"unsupported_signed.bin","issue":"unsupported_signing"},{"file":"unsupported_msgid.bin","issue":"unsupported_message"},{"file":"unsupported_flags.bin","issue":"unsupported_incompat_flags"}]}

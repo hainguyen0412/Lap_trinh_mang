@@ -1,0 +1,12 @@
+{
+  "selected_directories": [
+    "common",
+    "minimal",
+    "standard"
+  ],
+  "repository": "https://github.com/mavlink/c_library_v2",
+  "header_files_and_upstream_notices": 254,
+  "commit": "41874cfb2af7e658ca9ed88a13e91c750bcd2263",
+  "dialect": "common",
+  "archive_sha256": "cf09dd3cae412c709d1f4f7e5feaef6276a65e776731203d18469f926f429e04"
+}

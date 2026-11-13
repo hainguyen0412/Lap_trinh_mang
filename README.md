@@ -31,6 +31,25 @@ Lap_trinh_mang/
 └── docs/                   # diagrams, references, verification
 ```
 
-Trạng thái: khởi tạo cấu trúc thư mục. Các thư mục được giữ trong Git bằng tệp `.gitkeep` rỗng.
+## Tiến độ
+
+- Đã khởi tạo cây thư mục dự án.
+- Đợt 2: bổ sung thư viện MAVLink C cố định phiên bản, bộ tạo dữ liệu mẫu và phép đối chiếu độc lập.
+
+Các thư mục còn lại được giữ bằng `.gitkeep` để triển khai ở các đợt tiếp theo.
+
+## Kiểm tra bộ mẫu
+
+Tại gốc repository, dùng g++ hỗ trợ C++17 và Python 3.9+:
+
+```powershell
+New-Item -ItemType Directory -Force build | Out-Null
+g++ -std=c++17 -O2 -Wall -Wextra -Wpedantic -isystem third_party/mavlink tools/generate_fixtures.cpp -o build/fixture_generator.exe
+.\build\fixture_generator.exe output/fixtures_regenerated
+python -B tests/verify_fixtures.py
+python -B tests/verify_fixtures.py output/fixtures_regenerated
+```
+
+Chương trình tạo mẫu chạy độc lập, chưa cần module parser/decoder của dự án. Các lệnh trên chỉ kiểm tra bộ fixture; các module ứng dụng sẽ được bổ sung theo kế hoạch.
 
 `build/` và `output/` dành cho dữ liệu sinh ra khi triển khai và chạy thử, được Git bỏ qua. Cấu hình riêng của máy dùng `config/*.local.json`.

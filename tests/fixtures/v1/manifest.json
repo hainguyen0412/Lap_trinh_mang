@@ -1,0 +1,14 @@
+{
+  "schema_version":1,
+  "reference_commit":"41874cfb2af7e658ca9ed88a13e91c750bcd2263",
+  "seed":20261111,
+  "frames":[
+    {"name":"heartbeat","offset":0,"length":21,"msgid":0,"seq":10,"sysid":1,"compid":1,"raw_hex":"fd0900000a010100000078563412020c810403ef4a","expected":{"custom_mode":305419896,"type":2,"autopilot":12,"base_mode":129,"system_status":4}},
+    {"name":"sys_status","offset":21,"length":43,"msgid":1,"seq":11,"sysid":1,"compid":1,"raw_hex":"fd1f00000b010101000000000000000000000000000000000c30000000000000000000000000000055099c","expected":{"battery_voltage_v":12.3,"battery_remaining_percent":85}},
+    {"name":"attitude","offset":64,"length":28,"msgid":30,"seq":12,"sysid":1,"compid":1,"raw_hex":"fd1000000c01011e0000e8030000cdcccc3dcdcc4cbe0000c03f6bed","expected":{"roll_rad":0.1,"pitch_rad":-0.2,"yaw_rad":1.5}},
+    {"name":"global_position_int","offset":92,"length":30,"msgid":33,"seq":13,"sysid":1,"compid":1,"raw_hex":"fd1200000d0101210000e80300008058840c80cc0f3f40e201008813ab54","expected":{"latitude_deg":21.0,"longitude_deg":105.8,"altitude_msl_m":123.456,"relative_altitude_m":5.0}},
+    {"name":"command_ack","offset":122,"length":22,"msgid":77,"seq":14,"sysid":1,"compid":1,"raw_hex":"fd0a00000e01014d00009001006400000000ffbeef76","expected":{"command":400,"result":0,"progress":100,"result_param2":0,"target_system":255,"target_component":190}},
+    {"name":"command_long","offset":144,"length":44,"msgid":76,"seq":0,"sysid":255,"compid":190,"raw_hex":"fd20000000ffbe4c00000000803f000000000000000000000000000000000000000000000000900101019e4e","expected":null},
+    {"name":"ping","offset":188,"length":21,"msgid":4,"seq":15,"sysid":1,"compid":1,"raw_hex":"fd0900000f010104000040420f00000000007bacd8","expected":null}
+  ]
+}
