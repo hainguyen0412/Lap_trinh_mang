@@ -36,6 +36,8 @@ Lap_trinh_mang/
 - Đã khởi tạo cây thư mục dự án.
 - Đợt 2: bổ sung thư viện MAVLink C cố định phiên bản, bộ tạo dữ liệu mẫu và phép đối chiếu độc lập.
 
+- Đợt 3: đọc và kiểm tra cấu hình JSON chung; bổ sung thư viện JSON và kiểm thử cấu hình.
+
 Các thư mục còn lại được giữ bằng `.gitkeep` để triển khai ở các đợt tiếp theo.
 
 ## Kiểm tra bộ mẫu
@@ -53,3 +55,13 @@ python -B tests/verify_fixtures.py output/fixtures_regenerated
 Chương trình tạo mẫu chạy độc lập, chưa cần module parser/decoder của dự án. Các lệnh trên chỉ kiểm tra bộ fixture; các module ứng dụng sẽ được bổ sung theo kế hoạch.
 
 `build/` và `output/` dành cho dữ liệu sinh ra khi triển khai và chạy thử, được Git bỏ qua. Cấu hình riêng của máy dùng `config/*.local.json`.
+
+## Kiểm tra cấu hình chung (đợt 3)
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test_config.ps1
+```
+
+Bộ đọc cấu hình từ chối khóa lạ, sai kiểu, cổng/ID/giới hạn không hợp lệ và chế độ ngoài B0/B1/B2. Mẫu nằm trong `config/gateway.example.json`; cấu hình riêng của máy có thể dùng đuôi `.local.json`.
+
+Thư viện nlohmann/json 3.11.3 được lưu tại `third_party/nlohmann/json.hpp`, kèm giấy phép MIT trong `third_party/nlohmann/LICENSE`. Nguồn: https://github.com/nlohmann/json/tree/v3.11.3.

@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "network": {
+    "udp_bind": { "host": "0.0.0.0", "port": 14550 },
+    "tcp_observer_bind": { "host": "0.0.0.0", "port": 5760 },
+    "tcp_controller_bind": { "host": "0.0.0.0", "port": 5761 },
+    "max_observers": 9,
+    "max_controllers": 1
+  },
+  "px4": {
+    "endpoint_policy": "lock_first_valid_matching_heartbeat",
+    "expected_sysid": 1,
+    "expected_compid": 1,
+    "heartbeat_stale_after_ms": 3000,
+    "reject_commands_when_stale": true
+  },
+  "protocol": {
+    "mavlink_version": 2,
+    "dialect": "common",
+    "allow_signed_frames": false,
+    "decode_msgids": [0, 1, 30, 33, 77]
+  },
+  "limits": {
+    "udp_receive_queue_datagrams": 4096,
+    "udp_send_queue_frames": 256,
+    "tcp_parser_buffer_bytes": 65536,
+    "client_send_queue_frames": 1024,
+    "client_send_queue_bytes": 1048576,
+    "logger_queue_records": 10000,
+    "udp_candidate_endpoints": 16
+  },
+  "client": {
+    "gateway_host": "127.0.0.1",
+    "gcs_sysid": 255,
+    "gcs_compid": 190,
+    "heartbeat_interval_ms": 1000
+  },
+  "commands": {
+    "allowed_command_ids": [400, 22, 21],
+    "max_pending": 1,
+    "ack_timeout_ms": 1000,
+    "max_total_attempts": 3,
+    "in_progress_idle_timeout_ms": 10000,
+    "in_progress_total_timeout_ms": 60000
+  },
+  "measurement": {
+    "mode": "B1",
+    "seed": 20261111,
+    "warmup_seconds": 10,
+    "duration_seconds": 60,
+    "drain_timeout_ms": 5000,
+    "snapshot_interval_ms": 1000,
+    "offered_frames_per_second": 200,
+    "expected_clients": 5
+  },
+  "logging": {
+    "schema_version": 1,
+    "root_directory": "output/runs",
+    "flush_interval_ms": 1000,
+    "shutdown_drain_ms": 2000,
+    "max_record_bytes": 16384,
+    "write_frame_detail_only_in_B2": true,
+    "max_file_bytes": 104857600,
+    "max_component_run_bytes": 536870912
+  }
+}
