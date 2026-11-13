@@ -1,0 +1,20 @@
+* text=auto
+*.cpp text eol=lf
+*.hpp text eol=lf
+*.h text eol=lf
+*.py text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.ps1 text eol=crlf
+*.cmd text eol=crlf
+CMakeLists.txt text eol=lf
+*.bin binary
+*.docx binary
+*.png binary
+*.zip binary
+*.drawio text eol=lf
+
+# Preserve upstream files and license notices byte-for-byte.
+/third_party/** -text

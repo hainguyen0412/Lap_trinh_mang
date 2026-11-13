@@ -1,0 +1,28 @@
+# Build products and runtime evidence
+/build/
+/output/
+*.exe
+*.dll
+*.o
+*.obj
+*.a
+*.lib
+*.pdb
+*.log
+
+# Machine-specific configuration
+/CMakeUserPresets.json
+/config/*.local.json
+/config/local.json
+.env
+.env.*
+!.env.example
+
+# Python and editor caches
+__pycache__/
+*.pyc
+.venv/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
