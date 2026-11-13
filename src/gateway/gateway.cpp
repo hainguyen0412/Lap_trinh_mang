@@ -14,7 +14,7 @@ namespace mavlink_gateway {
 namespace {
 template<class T> std::string str(T v) { return std::to_string(v); }
 std::string key(const Endpoint& e) { return e.ip + ":" + str(e.port); }
-[[maybe_unused]] std::uint8_t byte(const FrameRecord& f, std::size_t at) { return at < f.header.payload_len && 10+at < f.raw.size() ? f.raw[10+at] : 0; }
+std::uint8_t byte(const FrameRecord& f, std::size_t at) { return at < f.header.payload_len && 10+at < f.raw.size() ? f.raw[10+at] : 0; }
 std::string utc_now() {
     const auto t = std::time(nullptr); std::tm tm{}; gmtime_s(&tm, &t);
     std::ostringstream s; s << std::put_time(&tm, "%Y-%m-%dT%H:%M:%SZ"); return s.str();
@@ -265,18 +265,38 @@ bool Gateway::px4_ready(Endpoint& endpoint_out, std::string& error) {
     endpoint_out = *px4_; return true;
 }
 void Gateway::receive_client(const std::shared_ptr<Session>& s) {
-    std::uint8_t bytes[4096];
-    while (!stop_input_ && s->reason == CloseReason::None) {
-        if (!ready(s->socket.get(),false)) continue;
-        const int n=recv(s->socket.get(),reinterpret_cast<char*>(bytes),sizeof(bytes),0);
-        if (n==SOCKET_ERROR && WSAGetLastError()==WSAEWOULDBLOCK) continue;
-        if (n>0) event("uplink_disabled", "telemetry-only milestone",s->source);
-        close_session(s,n>0?CloseReason::Observer:CloseReason::Connection);
-        break;
-    }
-    s->rx_done=true;
+    auto parser = parser_factory_(); if (!parser) throw std::runtime_error("Null parser");
+    std::uint8_t buffer[8192];
+    try {
+        while (!stop_input_ && s->reason == CloseReason::None) {
+            if (!ready(s->socket.get(), false)) continue;
+            int n = recv(s->socket.get(), reinterpret_cast<char*>(buffer), sizeof(buffer), 0);
+            const auto received = now_ns();
+            if (n == 0) break;
+            if (n == SOCKET_ERROR) {
+                auto error = WSAGetLastError(); if (error == WSAEWOULDBLOCK) continue;
+                if (s->reason == CloseReason::None) event("recv_error", str(error), s->source);
+                break;
+            }
+            if (s->role == ClientRole::Observer) { close_session(s, CloseReason::Observer); break; }
+            auto batch = parser->consume({s->source, received, Bytes(buffer, buffer + n)}); issues(batch);
+            for (auto& f : batch.frames) {
+                frame(f);
+                Endpoint px4; std::string error;
+                if (!px4_ready(px4, error)) { event(error, "uplink rejected", s->source); continue; }
+                if (f.header.sysid != c_.gcs_sysid || f.header.compid != c_.gcs_compid) { event("uplink_not_allowed", "GCS ID", s->source); continue; }
+                if (f.header.msgid == 76) {
+                    const auto command = byte(f, 28) | (byte(f, 29) << 8);
+                    if (std::find(c_.allowed_commands.begin(),c_.allowed_commands.end(),command)==c_.allowed_commands.end()) { event("uplink_not_allowed", "command=" + str(command), s->source); continue; }
+                    if (byte(f, 30) != c_.px4_sysid || byte(f, 31) != c_.px4_compid) { event("target_mismatch", "COMMAND_LONG", s->source); continue; }
+                } else if (f.header.msgid != 0) { event("uplink_not_allowed", "msgid=" + str(f.header.msgid), s->source); continue; }
+                if (!uplink_.try_push(std::make_shared<const FrameRecord>(std::move(f)))) event("udp_uplink_queue_full", "frame dropped", s->source);
+            }
+            if (batch.close_tcp_session) { close_session(s, CloseReason::ParserLimit); break; }
+        }
+    } catch (...) { parser->reset(s->source.source_id); retire_source(s->source.source_id); throw; }
+    parser->reset(s->source.source_id); retire_source(s->source.source_id); // Never called from reaper/network manager.
 }
-
 void Gateway::send_client(const std::shared_ptr<Session>& s) {
     SharedFrame f;
     while (!s->outbound.closed() || s->outbound.size()) {
@@ -305,12 +325,18 @@ void Gateway::send_client(const std::shared_ptr<Session>& s) {
     }
 }
 void Gateway::send_udp() {
-    SharedFrame frame;
-    while (!stop_input_) {
-        if (uplink_.pop(frame)) event("uplink_disabled","telemetry-only milestone");
+    SharedFrame f;
+    while (!uplink_.closed() || uplink_.size()) {
+        if (!uplink_.pop(f)) continue;
+        Endpoint peer; std::string error;
+        if (!px4_ready(peer, error)) { event(error, "queued uplink dropped", f->source); continue; }
+        auto addr = address(peer);
+        const int n = sendto(udp_.get(), reinterpret_cast<const char*>(f->raw.data()), static_cast<int>(f->raw.size()), 0,
+                             reinterpret_cast<sockaddr*>(&addr), sizeof(addr));
+        if (n != static_cast<int>(f->raw.size())) event("udp_send_error", str(WSAGetLastError()), f->source);
+        else event("uplink_sent", "msgid=" + str(f->header.msgid) + "; endpoint=" + key(peer), f->source);
     }
 }
-
 void Gateway::retire_source(SourceId id) {
     if(!release_source_||c_.mode=="B0")return;
     std::lock_guard<std::mutex> lock(inspector_lifetime_mutex_);
