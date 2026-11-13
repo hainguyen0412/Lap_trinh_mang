@@ -46,6 +46,8 @@ Lap_trinh_mang/
 
 - Đợt 7: Giải mã telemetry và theo dõi SEQ theo nguồn.
 
+- Đợt 8: Ghi CSV bằng hàng đợi có giới hạn.
+
 Các thư mục còn lại được giữ bằng `.gitkeep` để triển khai ở các đợt tiếp theo.
 
 ## Kiểm tra bộ mẫu
@@ -91,3 +93,5 @@ Kiểm tra đợt 5: `powershell -NoProfile -ExecutionPolicy Bypass -File script
 Đợt 6: các công cụ `tools/fake_gateway.cpp`, `tools/replay_udp.cpp` và đóng gói MAVLink sử dụng parser đã có ở đợt 5. Kiểm tra hàng đợi bằng `scripts/test_send_queue.ps1`; kiểm tra server bằng `tests/integration/fake_gateway_test.py` sau khi build công cụ vào build/bin.
 
 Kiểm tra đợt 7: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test_decoder_inspector.ps1`.
+
+Kiểm tra đợt 8: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test_logging.ps1`.
