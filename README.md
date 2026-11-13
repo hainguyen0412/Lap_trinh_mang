@@ -52,6 +52,8 @@ Lap_trinh_mang/
 
 - Đợt 10: Kiểm tra vai trò và định tuyến lệnh về PX4.
 
+- Đợt 11: Hiển thị telemetry trong client console TCP.
+
 Các thư mục còn lại được giữ bằng `.gitkeep` để triển khai ở các đợt tiếp theo.
 
 ## Kiểm tra bộ mẫu
@@ -103,3 +105,5 @@ Kiểm tra đợt 8: `powershell -NoProfile -ExecutionPolicy Bypass -File script
 Build gateway: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build_gateway.ps1`. Kiểm tra chuyển tiếp: `python -B tests/integration/telemetry_fanout_test.py`. Mốc này chỉ chuyển telemetry; uplink được đóng để chờ kiểm tra vai trò ở đợt 10.
 
 Đợt 10 bật uplink có kiểm tra vai trò, ID, allowlist, đích và heartbeat nguồn; chạy `python -B tests/integration/gateway_test.py` để kiểm tra mạng và cô lập client.
+
+Build client: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build_client.ps1`. Chạy `build/bin/c_client.exe --role observer`; cấu hình hiệu lực và log lưu theo đường dẫn chương trình in.
