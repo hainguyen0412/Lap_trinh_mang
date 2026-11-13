@@ -40,6 +40,8 @@ Lap_trinh_mang/
 
 - Đợt 4: Winsock, hàng đợi giới hạn, quản lý socket RAII và xử lý gửi thiếu byte.
 
+- Đợt 5: Tách khung MAVLink TCP UDP và kiểm tra CRC.
+
 Các thư mục còn lại được giữ bằng `.gitkeep` để triển khai ở các đợt tiếp theo.
 
 ## Kiểm tra bộ mẫu
@@ -79,3 +81,5 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test_network.ps1
 Kiểm tra hàng đợi theo số phần tử/dung lượng, FIFO và đánh thức khi đóng; gửi thiếu byte, would-block, interrupt, hủy, lỗi socket và kết quả bất hợp lệ. Các ca socket thật dùng cổng localhost tạm để kiểm tra bind UDP/TCP, độc quyền cổng và quyền sở hữu socket.
 
 Đợt này cung cấp các thành phần mạng cơ sở. Vòng xử lý gateway và chuyển tiếp nhiều client sẽ được triển khai ở các đợt sau.
+
+Kiểm tra đợt 5: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test_parser.ps1`.
